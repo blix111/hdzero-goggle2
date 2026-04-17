@@ -36,6 +36,7 @@
 #include "ui/ui_keyboard.h"
 #include "ui/ui_porting.h"
 #include "ui/ui_style.h"
+#include "ui/page_analog_scanner.h"
 
 LV_IMG_DECLARE(img_arrow);
 
