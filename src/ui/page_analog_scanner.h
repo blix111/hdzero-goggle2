@@ -4,7 +4,8 @@
 extern "C" {
 #endif
 
-#include "page_common.h"
+#include "core/common.hh"
+#include "ui/page_common.h"
 
 extern page_pack_t pp_analog_scanner;
 
