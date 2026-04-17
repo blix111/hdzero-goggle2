@@ -1,5 +1,3 @@
-#include "page_analog_scanner.h"
-
 #include <stdio.h>
 #include <unistd.h>
 
@@ -7,11 +5,18 @@
 #include <minIni.h>
 
 #include "core/app_state.h"
-#include "core/common.hh"  
+#include "core/battery.h"
+#include "core/common.hh"
+#include "driver/dm5680.h"
+#include "driver/hardware.h"
+#include "driver/mcp3021.h"
 #include "driver/rtc6715.h"
 #include "lang/language.h"
 #include "page_common.h"
 #include "ui/ui_style.h"
+
+// On appelle notre scanner APRÈS avoir chargé les fondations
+#include "page_analog_scanner.h"
 
 // Le nombre de chaînes analogiques standards (Bandes A, B, E, F, R)
 #define SCANNER_CHANNELS 40
