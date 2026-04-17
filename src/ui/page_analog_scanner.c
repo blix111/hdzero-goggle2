@@ -7,6 +7,7 @@
 #include <minIni.h>
 
 #include "core/app_state.h"
+#include "core/common.hh"  
 #include "driver/rtc6715.h"
 #include "lang/language.h"
 #include "page_common.h"
