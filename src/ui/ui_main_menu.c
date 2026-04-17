@@ -66,6 +66,7 @@ static page_pack_t *page_packs[] = {
     &pp_focus_chart,
     &pp_clock,
     &pp_input,
+    &pp_analog_scanner,
     &pp_analog_rssi,
     &pp_sleep,
 };
