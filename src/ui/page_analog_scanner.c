@@ -13,6 +13,7 @@
 #include "driver/rtc6715.h"
 #include "lang/language.h"
 #include "page_common.h"
+#include "ui/ui_main_menu.h"
 #include "ui/ui_style.h"
 
 // NOTRE FICHIER EST INCLUS ICI, APRÈS LES FONDATIONS !

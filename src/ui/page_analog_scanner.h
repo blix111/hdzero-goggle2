@@ -1,7 +1,7 @@
 #ifndef PAGE_ANALOG_SCANNER_H
 #define PAGE_ANALOG_SCANNER_H
 
-#include "page_common.h"
+#include "ui/ui_main_menu.h"
 
 #ifdef __cplusplus
 extern "C" {
