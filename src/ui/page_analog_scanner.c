@@ -40,6 +40,7 @@ static const uint16_t ch_freqs[SCANNER_CHANNELS] = {
 
 static lv_obj_t *chart;
 static lv_chart_series_t *ser_rssi;
+static lv_chart_cursor_t *cursor;
 static lv_timer_t *scan_timer = NULL;
 static lv_obj_t *label_info;
 static lv_obj_t *btn_scan;
@@ -56,8 +57,8 @@ static void update_info() {
     lv_label_set_text(label_info, buf);
     
     // Highlight the selected point in chart if not scanning
-    if (!is_scanning) {
-        lv_chart_set_cursor_point(chart, lv_chart_get_cursor_by_id(chart, 0), ser_rssi, selected_ch);
+    if (!is_scanning && cursor) {
+        lv_chart_set_cursor_point(chart, cursor, ser_rssi, selected_ch);
     }
 }
 
@@ -133,7 +134,7 @@ static lv_obj_t *page_analog_scanner_create(lv_obj_t *parent, panel_arr_t *arr) 
     ser_rssi = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_PRIMARY_Y);
     
     // Add a cursor
-    lv_chart_cursor_t * cursor = lv_chart_add_cursor(chart, lv_palette_main(LV_PALETTE_YELLOW), LV_DIR_VER);
+    cursor = lv_chart_add_cursor(chart, lv_palette_main(LV_PALETTE_YELLOW), LV_DIR_VER);
 
     // Buttons at bottom
     btn_scan = lv_btn_create(cont);
@@ -177,9 +178,9 @@ static void on_exit() {
 static void on_roller(uint8_t key) {
     if (is_scanning) return;
     
-    if (key == DIAL_WHEEL_UP) {
+    if (key == DIAL_KEY_UP) {
         selected_ch = (selected_ch + 1) % SCANNER_CHANNELS;
-    } else if (key == DIAL_WHEEL_DOWN) {
+    } else if (key == DIAL_KEY_DOWN) {
         selected_ch = (selected_ch - 1 + SCANNER_CHANNELS) % SCANNER_CHANNELS;
     }
     update_info();
@@ -194,7 +195,7 @@ static void on_click(uint8_t key, int sel) {
         update_info();
     } else {
         // Tune to selected channel
-        g_setting.source.analog_ch = selected_ch;
+        g_setting.source.analog_channel = (uint8_t)selected_ch;
         RTC6715_SetCH(selected_ch);
         LOGI("Scanner tuned to %s (%d MHz)", ch_names[selected_ch], ch_freqs[selected_ch]);
         // Visual feedback
