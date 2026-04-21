@@ -7,6 +7,7 @@
 #include "core/app_state.h"
 #include "core/battery.h"
 #include "core/common.hh"
+#include "core/dvr.h"
 #include "driver/dm5680.h"
 #include "driver/hardware.h"
 #include "driver/mcp3021.h"
@@ -43,8 +44,7 @@ static lv_chart_series_t *ser_rssi;
 static lv_chart_cursor_t *cursor;
 static lv_timer_t *scan_timer = NULL;
 static lv_obj_t *label_info;
-static lv_obj_t *btn_scan;
-static lv_obj_t *label_btn;
+static lv_obj_t *label_status;
 static lv_obj_t *label_blix;
 
 static int current_scan_ch = 0;
@@ -52,11 +52,14 @@ static int selected_ch = 0;
 static bool is_scanning = false;
 
 static void update_info() {
-    char buf[64];
-    snprintf(buf, sizeof(buf), "Channel: %s  |  Freq: %d MHz", ch_names[selected_ch], ch_freqs[selected_ch]);
+    char buf[128];
+    if (is_scanning) {
+        snprintf(buf, sizeof(buf), "#FF0000 SCANNING...#\nClick to Pause");
+    } else {
+        snprintf(buf, sizeof(buf), "Channel: #FFFF00 %s#  (%d MHz)\n#00FF00 Long Press to FLY#", ch_names[selected_ch], ch_freqs[selected_ch]);
+    }
     lv_label_set_text(label_info, buf);
     
-    // Highlight the selected point in chart if not scanning
     if (!is_scanning && cursor) {
         lv_chart_set_cursor_point(chart, cursor, ser_rssi, selected_ch);
     }
@@ -66,7 +69,7 @@ static void scan_timer_cb(lv_timer_t * timer) {
     if (!is_scanning || chart == NULL) return;
 
     RTC6715_SetCH(current_scan_ch);
-    usleep(40 * 1000); // 40ms to stabilize
+    usleep(40 * 1000); 
 
     int rssi = 0;
     for (int i = 0; i < 8; i++) {
@@ -79,19 +82,6 @@ static void scan_timer_cb(lv_timer_t * timer) {
     current_scan_ch++;
     if (current_scan_ch >= SCANNER_CHANNELS) {
         current_scan_ch = 0;
-    }
-}
-
-static void btn_scan_cb(lv_event_t * e) {
-    is_scanning = !is_scanning;
-    if (is_scanning) {
-        lv_label_set_text(label_btn, "STOP SCAN");
-        lv_obj_set_style_bg_color(btn_scan, lv_palette_main(LV_PALETTE_RED), 0);
-    } else {
-        lv_label_set_text(label_btn, "START SCAN");
-        lv_obj_set_style_bg_color(btn_scan, lv_palette_main(LV_PALETTE_GREEN), 0);
-        selected_ch = current_scan_ch;
-        update_info();
     }
 }
 
@@ -115,14 +105,15 @@ static lv_obj_t *page_analog_scanner_create(lv_obj_t *parent, panel_arr_t *arr) 
 
     // Info label at top
     label_info = lv_label_create(cont);
-    lv_label_set_text(label_info, "Select a channel or Start Scan");
+    lv_label_set_recolor(label_info, true);
     lv_obj_set_style_text_font(label_info, &lv_font_montserrat_28, 0);
-    lv_obj_align(label_info, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_set_style_text_align(label_info, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(label_info, LV_ALIGN_TOP_MID, 0, 20);
 
     // Chart
     chart = lv_chart_create(cont);
-    lv_obj_set_size(chart, 900, 450);
-    lv_obj_align(chart, LV_ALIGN_TOP_MID, 0, 70);
+    lv_obj_set_size(chart, 920, 480);
+    lv_obj_align(chart, LV_ALIGN_TOP_MID, 0, 140);
     lv_chart_set_type(chart, LV_CHART_TYPE_BAR);
     lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, 3300);
     lv_chart_set_point_count(chart, SCANNER_CHANNELS);
@@ -132,20 +123,14 @@ static lv_obj_t *page_analog_scanner_create(lv_obj_t *parent, panel_arr_t *arr) 
     lv_obj_set_style_line_color(chart, lv_color_make(60, 60, 60), 0);
     
     ser_rssi = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_BLUE), LV_CHART_AXIS_PRIMARY_Y);
-    
-    // Add a cursor
     cursor = lv_chart_add_cursor(chart, lv_palette_main(LV_PALETTE_YELLOW), LV_DIR_VER);
 
-    // Buttons at bottom
-    btn_scan = lv_btn_create(cont);
-    lv_obj_set_size(btn_scan, 200, 60);
-    lv_obj_align(btn_scan, LV_ALIGN_BOTTOM_MID, 0, -60);
-    lv_obj_set_style_bg_color(btn_scan, lv_palette_main(LV_PALETTE_GREEN), 0);
-    lv_obj_add_event_cb(btn_scan, btn_scan_cb, LV_EVENT_CLICKED, NULL);
-
-    label_btn = lv_label_create(btn_scan);
-    lv_label_set_text(label_btn, "START SCAN");
-    lv_obj_center(label_btn);
+    // Instructions at bottom
+    label_status = lv_label_create(cont);
+    lv_label_set_text(label_status, "Dial: Select Channel  |  Click: Play/Pause  |  Long Press: FLY");
+    lv_obj_set_style_text_font(label_status, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(label_status, lv_palette_main(LV_PALETTE_GREY), 0);
+    lv_obj_align(label_status, LV_ALIGN_BOTTOM_MID, 0, -40);
 
     // Made by Blix
     label_blix = lv_label_create(cont);
@@ -159,11 +144,12 @@ static lv_obj_t *page_analog_scanner_create(lv_obj_t *parent, panel_arr_t *arr) 
 
 static void on_enter() {
     RTC6715_Open(1, 0);
-    is_scanning = false;
+    is_scanning = true; // Start scanning by default
     current_scan_ch = 0;
     if (scan_timer == NULL) {
         scan_timer = lv_timer_create(scan_timer_cb, 60, NULL);
     }
+    update_info();
 }
 
 static void on_exit() {
@@ -187,19 +173,29 @@ static void on_roller(uint8_t key) {
 }
 
 static void on_click(uint8_t key, int sel) {
-    if (is_scanning) {
-        // Stop scan on click
-        is_scanning = false;
-        lv_label_set_text(label_btn, "START SCAN");
-        lv_obj_set_style_bg_color(btn_scan, lv_palette_main(LV_PALETTE_GREEN), 0);
+    if (key == DIAL_KEY_CLICK) {
+        is_scanning = !is_scanning;
+        if (!is_scanning) {
+            selected_ch = (current_scan_ch > 0) ? (current_scan_ch - 1) : (SCANNER_CHANNELS - 1);
+        }
         update_info();
-    } else {
-        // Tune to selected channel
-        g_setting.source.analog_channel = (uint8_t)selected_ch;
-        RTC6715_SetCH(selected_ch);
-        LOGI("Scanner tuned to %s (%d MHz)", ch_names[selected_ch], ch_freqs[selected_ch]);
-        // Visual feedback
-        lv_label_set_text(label_info, "TUNED! Press Back to exit");
+    } else if (key == DIAL_KEY_PRESS) {
+        // Long press: Tune and Fly!
+        is_scanning = false;
+        
+        // Update settings
+        g_setting.source.analog_channel = (uint8_t)(selected_ch + 1);
+        ini_putl("source", "analog_channel", g_setting.source.analog_channel, SETTING_INI);
+        
+        LOGI("Scanner tuned to %s, launching Analog mode", ch_names[selected_ch]);
+        
+        // Execute source change
+        app_switch_to_analog();
+        g_source_info.source = SOURCE_ANALOG;
+        app_state_push(APP_STATE_VIDEO);
+        
+        // Clean up and close menu
+        main_menu_show(false);
     }
 }
 
