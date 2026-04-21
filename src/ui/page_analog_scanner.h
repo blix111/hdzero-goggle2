@@ -12,4 +12,5 @@ extern page_pack_t pp_analog_scanner;
 #ifdef __cplusplus
 }
 #endif
+
 #endif
